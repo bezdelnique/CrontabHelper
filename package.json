@@ -11,9 +11,26 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@testdeck/mocha": "^0.3.3",
+    "@types/chai": "^5.0.1",
     "@types/node": "^22.13.8",
+    "chai": "^5.2.0",
+    "mocha": "^11.1.0",
     "nodemon": "^3.1.9",
+    "nyc": "^17.1.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.2"
+  },
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ]
   }
 }
