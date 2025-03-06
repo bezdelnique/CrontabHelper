@@ -2,19 +2,33 @@ export class CronParser {
     public parse(line: string): CronResult {
         //let line: string = "* * * * *";
         line = line.trim();
-        //let zeroLength = line.length - 1;
+        let zeroLength = line.length - 1;
         let pos = 0;
-        let result: Array<EveryTick> = [];
-        let current = new EveryTick();
+        let result: Array<Tick> = [];
+        let current = new Tick();
         for (let i = 0; i < line.length; i++) {
-            const ch: string = line[i];
+            let ch: string = line.charAt(i);
             if (ch === "*") {
-                current = new EveryTick();
-            } else if (ch === " ") {
+                current = new Tick();
                 result[pos] = current;
                 pos++;
+                i++;
+            } else if (this.isNumeric(ch)) {
+                let digits: string = ch;
+                while (i + 1 <= zeroLength && line.charAt(i + 1) != " ") {
+                    i++;
+                    ch = line.charAt(i)
+                    if (this.isNumeric(ch)) {
+                        digits = digits.concat(ch)
+                    } else {
+                        throw new Error('Unexpected character [' + ch + '] at position ' + i);
+                    }
+                }
+                result[pos] = new Tick(Number(digits));
+                pos++;
+                i++;
             } else {
-                throw new Error('Unexpected character "' + ch + '"');
+                throw new Error('Unexpected character [' + ch + '] at position ' + i);
             }
         }
         // last
@@ -22,11 +36,34 @@ export class CronParser {
 
         return new CronResult(result);
     }
+
+    private isNumeric(str: string): boolean {
+        return str.trim() !== "" && !isNaN(Number(str));
+    }
+
 }
 
-export class EveryTick {
-    isEqual(other: EveryTick): boolean {
-        return this instanceof EveryTick && other instanceof EveryTick;
+enum TickType {
+    ANY,
+    DETERMINED,
+}
+
+export class Tick {
+    type: TickType = TickType.ANY;
+    digits: number = 0;
+
+    constructor();
+    constructor(digits: number);
+    constructor(digits?: number) {
+        if (digits) {
+            this.type = TickType.DETERMINED;
+            this.digits = digits;
+        }
+    }
+
+    isEqual(other: Tick): boolean {
+        return this.type===other.type
+            && this.digits===other.digits;
     }
 }
 
@@ -38,11 +75,11 @@ export class EveryTick {
 // | hour (0–23)
 // minute (0–59)
 export class CronResult {
-    minute: EveryTick;
-    hour: EveryTick;
-    dayOfMonth: EveryTick;
-    month: EveryTick;
-    dayOfWeek: EveryTick;
+    minute: Tick;
+    hour: Tick;
+    dayOfMonth: Tick;
+    month: Tick;
+    dayOfWeek: Tick;
 
     // constructor(result: any[]) {
     //     this.minute = result[0];
@@ -52,7 +89,7 @@ export class CronResult {
     //     this.dayOfWeek = result[4];
     // }
 
-    constructor([minute, hour, dayOfMonth, month, dayOfWeek]: EveryTick[]) {
+    constructor([minute, hour, dayOfMonth, month, dayOfWeek]: Tick[]) {
         this.minute = minute;
         this.hour = hour;
         this.dayOfMonth = dayOfMonth;

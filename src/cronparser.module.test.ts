@@ -1,4 +1,4 @@
-import {CronParser, CronResult, EveryTick} from "./cronparser.module";
+import {CronParser, CronResult, Tick} from "./cronparser.module";
 
 // * * * * * <command to execute>
 // | | | | |
@@ -15,16 +15,25 @@ import {CronParser, CronResult, EveryTick} from "./cronparser.module";
 // * * 3-4 * *
 // * * * JAN-DEC *
 // * * * * 0-6
-test("Every second", () => {
-    // expect(fizzBuzz(2)).toBe("1 2 ");
-    // expect(fizzBuzz(3)).toBe("1 2 Fizz ");
-
+test("Every minute", () => {
     let cronResult = new CronParser().parse("* * * * *");
-    let everyTick = new EveryTick();
+    let anyTick = new Tick();
 
-    expect(cronResult.minute.isEqual(everyTick)).toBe(true);
-    expect(cronResult.hour.isEqual(everyTick)).toBe(true);
-    expect(cronResult.dayOfMonth.isEqual(everyTick)).toBe(true);
-    expect(cronResult.month.isEqual(everyTick)).toBe(true);
-    expect(cronResult.dayOfWeek.isEqual(everyTick)).toBe(true);
+    expect(cronResult.minute.isEqual(anyTick)).toBe(true);
+    expect(cronResult.hour.isEqual(anyTick)).toBe(true);
+    expect(cronResult.dayOfMonth.isEqual(anyTick)).toBe(true);
+    expect(cronResult.month.isEqual(anyTick)).toBe(true);
+    expect(cronResult.dayOfWeek.isEqual(anyTick)).toBe(true);
+});
+
+test("Every fifth minute of hour", () => {
+    let cronResult = new CronParser().parse("5 * * * *");
+    let expected = new Tick(5);
+    expect(cronResult.minute.isEqual(expected)).toBe(true);
+});
+
+test("Every fifteenth minute of hour", () => {
+    let cronResult = new CronParser().parse("15 * * * *");
+    let expected = new Tick(15);
+    expect(cronResult.minute.isEqual(expected)).toBe(true);
 });
