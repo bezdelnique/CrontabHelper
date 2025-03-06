@@ -1,30 +1,44 @@
 export class CronParser {
+    zeroLength: number = 0;
+    line: string = "";
+
     public parse(line: string): CronResult {
         //let line: string = "* * * * *";
-        line = line.trim();
-        let zeroLength = line.length - 1;
+        this.line = line
+        this.zeroLength = line.length - 1;
+
+        const max = 59;
         let pos = 0;
         let result: Array<Tick> = [];
         let current = new Tick();
         for (let i = 0; i < line.length; i++) {
             let ch: string = line.charAt(i);
             if (ch === "*") {
-                current = new Tick();
-                result[pos] = current;
+                if (this.isNextSlash(i)) {
+                    i = i + 2; // Confidently move the pointer by two positions
+                    let ret = this.parseNumber(i, max);
+                    i = ret.i;
+                    result[pos] = Tick.ofStep(ret.value);
+                } else {
+                    current = new Tick();
+                    result[pos] = current;
+                }
                 pos++;
                 i++;
             } else if (this.isNumeric(ch)) {
-                let digits: string = ch;
-                while (i + 1 <= zeroLength && line.charAt(i + 1) != " ") {
-                    i++;
-                    ch = line.charAt(i)
-                    if (this.isNumeric(ch)) {
-                        digits = digits.concat(ch)
-                    } else {
-                        throw new Error('Unexpected character [' + ch + '] at position ' + i);
-                    }
+                let ret = this.parseNumber(i, max);
+                i = ret.i;
+                let from = ret.value;
+
+                if (this.isNextDash(i)) {
+                    i = i + 2; // Confidently move the pointer by two positions
+                    let ret = this.parseNumber(i, max);
+                    i = ret.i;
+                    let to = ret.value;
+                    result[pos] = new Tick(from, to);
+                } else {
+                    result[pos] = new Tick(from);
                 }
-                result[pos] = new Tick(Number(digits));
                 pos++;
                 i++;
             } else {
@@ -37,6 +51,41 @@ export class CronParser {
         return new CronResult(result);
     }
 
+    private parseNumber(i: number, max: number) {
+        let ch = this.line.charAt(i);
+        if (!this.isNumeric(ch)) {
+            throw new Error('Expected number, found [' + ch + '] at position ' + i);
+        }
+        let digits: string = ch;
+        //let from: number = 0;
+        while (this.isNextNumber(i)) {
+            i++;
+            ch = this.line.charAt(i)
+            if (this.isNumeric(ch)) {
+                digits = digits.concat(ch)
+            } else {
+                throw new Error('Unexpected character [' + ch + '] at position ' + i);
+            }
+        }
+        let number = Number(digits);
+        if (number > max) {
+            throw new Error('To big digit [' + number + '>' + max + '] at position ' + i);
+        }
+        return {value: number, i};
+    }
+
+    private isNextNumber(i: number): boolean {
+        return i + 1 <= this.zeroLength && this.isNumeric(this.line.charAt(i + 1));
+    }
+
+    private isNextDash(i: number): boolean {
+        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == "-";
+    }
+
+    private isNextSlash(i: number) {
+        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == "/";
+    }
+
     private isNumeric(str: string): boolean {
         return str.trim() !== "" && !isNaN(Number(str));
     }
@@ -46,24 +95,39 @@ export class CronParser {
 enum TickType {
     ANY,
     DETERMINED,
+    RANGE,
+    STEP,
 }
 
 export class Tick {
     type: TickType = TickType.ANY;
-    digits: number = 0;
+    first: number = 0;
+    second: number = 0;
 
     constructor();
-    constructor(digits: number);
-    constructor(digits?: number) {
-        if (digits) {
+    constructor(first: number);
+    constructor(first: number, second: number);
+    constructor(first?: number, second?: number) {
+        if (first && second) {
+            this.type = TickType.RANGE;
+            this.first = first;
+            this.second = second;
+        } else if (first) {
             this.type = TickType.DETERMINED;
-            this.digits = digits;
+            this.first = first;
         }
     }
 
     isEqual(other: Tick): boolean {
-        return this.type===other.type
-            && this.digits===other.digits;
+        return this.type === other.type
+            && this.first === other.first
+            && this.second === other.second;
+    }
+
+    static ofStep(step: number) {
+        let tick = new Tick(step);
+        tick.type = TickType.STEP;
+        return tick;
     }
 }
 

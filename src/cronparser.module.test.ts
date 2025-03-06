@@ -37,3 +37,19 @@ test("Every fifteenth minute of hour", () => {
     let expected = new Tick(15);
     expect(cronResult.minute.isEqual(expected)).toBe(true);
 });
+
+test("To more minutes", () => {
+    expect(()=>new CronParser().parse("60 * * * *")).toThrow();
+});
+
+test("Every minute from 10 to 20", () => {
+    let cronResult = new CronParser().parse("10-20 * * * *");
+    let expected = new Tick(10,20);
+    expect(cronResult.minute.isEqual(expected)).toBe(true);
+});
+
+test("Every ten minute", () => {
+    let cronResult = new CronParser().parse("*/10 * * * *");
+    let expected = Tick.ofStep(10);
+    expect(cronResult.minute.isEqual(expected)).toBe(true);
+});
