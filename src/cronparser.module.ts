@@ -3,26 +3,22 @@ export class CronParser {
     dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
     zeroLength: number = 0;
+    pos: number = 0
     line: string = "";
 
     public parse(line: string): CronResult {
         this.line = line
         this.zeroLength = line.length - 1;
 
-        let max = 59;
         let pos = 0;
         let result: Array<Tick> = [];
         let current = new Tick();
         for (let i = 0; i < line.length; i++) {
-            if (pos == 1) {
-                max = 23
-            }
-
             let ch: string = line.charAt(i);
             if (ch === "*") {
                 if (this.isNextSlash(i)) {
                     i = i + 2; // Confidently move the pointer by two positions
-                    let ret = this.parseNumber(i, max);
+                    let ret = this.parseNumber(i);
                     i = ret.i;
                     result[pos] = Tick.ofStep(ret.value);
                 } else {
@@ -32,7 +28,7 @@ export class CronParser {
                 pos++;
                 i++;
             } else if (this.isNumeric(ch)) {
-                let ret = this.parseNumber(i, max);
+                let ret = this.parseNumber(i);
                 i = ret.i;
                 let from = ret.value;
 
@@ -40,7 +36,7 @@ export class CronParser {
                 // 2-4
                 if (this.isNextDash(i)) {
                     i = i + 2; // Confidently move the pointer by two positions
-                    let ret = this.parseNumber(i, max);
+                    let ret = this.parseNumber(i);
                     i = ret.i;
                     let to = ret.value;
                     tick = new Tick(from, to);
@@ -52,7 +48,7 @@ export class CronParser {
                 // 12/4
                 if (this.isNextSlash(i)) {
                     i = i + 2; // Confidently move the pointer by two positions
-                    let ret = this.parseNumber(i, max);
+                    let ret = this.parseNumber(i);
                     i = ret.i;
                     result[pos] = Tick.ofStepRange(tick.first, tick.second, ret.value);
                 } else {
@@ -64,20 +60,54 @@ export class CronParser {
             } else {
                 throw new Error('Unexpected character [' + ch + '] at position ' + i);
             }
+            this.pos = pos;
         }
         // last
-        result[pos] = current;
+        // result[pos] = current;
 
         return new CronResult(result);
     }
 
-    private parseNumber(i: number, max: number) {
+    private getMinMax(pos: number) {
+        let min = 0;
+        let max = 0;
+        switch (pos) {
+            case 0: // minute
+                min = 0;
+                max = 59;
+                break;
+            case 1: // hour
+                min = 0;
+                max = 23;
+                break;
+            case 2: // day of month
+                min = 1;
+                max = 31;
+                break;
+            case 3: // month
+                min = 1;
+                max = 12;
+                break;
+            case 4: // day of week
+                min = 0;
+                max = 7;
+                break;
+            default:
+                throw new Error('Out of range pos ' + pos);
+        }
+        return {min: min, max: max}
+    }
+
+    private parseNumber(i: number) {
+        let min = this.getMinMax(this.pos).min;
+        let max = this.getMinMax(this.pos).max;
+
         let ch = this.line.charAt(i);
         if (!this.isNumeric(ch)) {
             throw new Error('Expected number, found [' + ch + '] at position ' + i);
         }
+
         let digits: string = ch;
-        //let from: number = 0;
         while (this.isNextNumber(i)) {
             i++;
             ch = this.line.charAt(i)
@@ -87,11 +117,16 @@ export class CronParser {
                 throw new Error('Unexpected character [' + ch + '] at position ' + i);
             }
         }
-        let number = Number(digits);
-        if (number > max) {
-            throw new Error('To big digit [' + number + '>' + max + '] at position ' + i);
+
+        let num = Number(digits);
+        if (num > max) {
+            throw new Error('To big digit [' + num + '>' + max + '] at position ' + i);
         }
-        return {value: number, i};
+        if (num < min) {
+            throw new Error('To small digit [' + num + '<' + min + '] at position ' + i);
+        }
+
+        return {value: num, i};
     }
 
     private isNextNumber(i: number): boolean {
