@@ -1,17 +1,23 @@
 export class CronParser {
+    month = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+
     zeroLength: number = 0;
     line: string = "";
 
     public parse(line: string): CronResult {
-        //let line: string = "* * * * *";
         this.line = line
         this.zeroLength = line.length - 1;
 
-        const max = 59;
+        let max = 59;
         let pos = 0;
         let result: Array<Tick> = [];
         let current = new Tick();
         for (let i = 0; i < line.length; i++) {
+            if (pos == 1) {
+                max = 23
+            }
+
             let ch: string = line.charAt(i);
             if (ch === "*") {
                 if (this.isNextSlash(i)) {
@@ -30,15 +36,29 @@ export class CronParser {
                 i = ret.i;
                 let from = ret.value;
 
+                let tick = new Tick();
+                // 2-4
                 if (this.isNextDash(i)) {
                     i = i + 2; // Confidently move the pointer by two positions
                     let ret = this.parseNumber(i, max);
                     i = ret.i;
                     let to = ret.value;
-                    result[pos] = new Tick(from, to);
+                    tick = new Tick(from, to);
                 } else {
-                    result[pos] = new Tick(from);
+                    tick = new Tick(from);
                 }
+
+                // 2-4/3
+                // 12/4
+                if (this.isNextSlash(i)) {
+                    i = i + 2; // Confidently move the pointer by two positions
+                    let ret = this.parseNumber(i, max);
+                    i = ret.i;
+                    result[pos] = Tick.ofStepRange(tick.first, tick.second, ret.value);
+                } else {
+                    result[pos] = tick;
+                }
+
                 pos++;
                 i++;
             } else {
@@ -94,26 +114,35 @@ export class CronParser {
 
 enum TickType {
     ANY,
-    DETERMINED,
+    VALUE,
     RANGE,
     STEP,
+    STEP_RANGE,
 }
 
 export class Tick {
     type: TickType = TickType.ANY;
-    first: number = 0;
-    second: number = 0;
+    first: number = -1;
+    second: number = -1;
+    step: number = -1;
 
     constructor();
     constructor(first: number);
     constructor(first: number, second: number);
-    constructor(first?: number, second?: number) {
-        if (first && second) {
+    constructor(first: number, second: number, step: number);
+    constructor(first?: number, second?: number, step?: number) {
+        // FIXME: 0 is legal
+        if (first !== undefined && second !== undefined && step !== undefined) {
+            this.type = TickType.STEP_RANGE;
+            this.first = first;
+            this.second = second;
+            this.step = step;
+        } else if (first !== undefined && second !== undefined) {
             this.type = TickType.RANGE;
             this.first = first;
             this.second = second;
-        } else if (first) {
-            this.type = TickType.DETERMINED;
+        } else if (first !== undefined) {
+            this.type = TickType.VALUE;
             this.first = first;
         }
     }
@@ -121,12 +150,31 @@ export class Tick {
     isEqual(other: Tick): boolean {
         return this.type === other.type
             && this.first === other.first
-            && this.second === other.second;
+            && this.second === other.second
+            && this.step === other.step;
     }
 
     static ofStep(step: number) {
-        let tick = new Tick(step);
+        let tick = new Tick(0, 0, step);
         tick.type = TickType.STEP;
+        return tick;
+    }
+
+    static ofValue(value: number) {
+        let tick = new Tick(value);
+        tick.type = TickType.VALUE;
+        return tick;
+    }
+
+    static ofStepRange(from: number, to: number, step: number) {
+        let tick = new Tick(from, to, step);
+        tick.type = TickType.STEP_RANGE;
+        return tick;
+    }
+
+    static ofRange(from: number, to: number) {
+        let tick = new Tick(from, to);
+        tick.type = TickType.RANGE;
         return tick;
     }
 }
