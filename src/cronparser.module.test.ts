@@ -88,17 +88,17 @@ test('Every october', () => {
     expect(cronResult.month.isEqual(expected)).toBe(true);
 });
 
-// test('Every october but by letters', () => {
-//     let cronResult = new CronParser().parse('* * * oct *');
-//     let expected = Tick.ofValue(1);
-//     expect(cronResult.month.isEqual(expected)).toBe(true);
-// });
-//
-// test('Every october but by capital letters', () => {
-//     let cronResult = new CronParser().parse('* * * OCT *');
-//     let expected = Tick.ofValue(1);
-//     expect(cronResult.month.isEqual(expected)).toBe(true);
-// });
+test('Every october but by letters', () => {
+    let cronResult = new CronParser().parse('* * * oct *');
+    let expected = Tick.ofValue(10);
+    expect(cronResult.month.isEqual(expected)).toBe(true);
+});
+
+test('Every october but by capital letters', () => {
+    let cronResult = new CronParser().parse('* * * OCT *');
+    let expected = Tick.ofValue(10);
+    expect(cronResult.month.isEqual(expected)).toBe(true);
+});
 
 test('Every wednesday', () => {
     let cronResult = new CronParser().parse('* * * * 3');
@@ -106,11 +106,11 @@ test('Every wednesday', () => {
     expect(cronResult.dayOfWeek.isEqual(expected)).toBe(true);
 });
 
-// test('Every wednesday but by letters', () => {
-//     let cronResult = new CronParser().parse('* * * * wed');
-//     let expected = Tick.ofValue(1);
-//     expect(cronResult.month.isEqual(expected)).toBe(true);
-// });
+test('Every wednesday but by letters', () => {
+    let cronResult = new CronParser().parse('* * * * wed');
+    let expected = Tick.ofValue(3);
+    expect(cronResult.month.isEqual(expected)).toBe(true);
+});
 
 
 // * * * * * <command to execute>

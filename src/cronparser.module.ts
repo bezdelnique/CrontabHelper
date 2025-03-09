@@ -1,6 +1,6 @@
 export class CronParser {
-    month = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-    dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    month = ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
     zeroLength: number = 0;
     pos: number = 0
@@ -27,7 +27,19 @@ export class CronParser {
                 }
                 pos++;
                 i++;
-            } else if (this.isNumeric(ch)) {
+            } else if (this.isLetter(ch)) {
+                if (pos != Position.MONTH && pos != Position.DAY_OF_WEEK) {
+                    throw new Error('Letter character does not allow for [' + pos + '] at position ' + i);
+                }
+                let ret = this.parseToken(i);
+                i = ret.i;
+                if (i != this.zeroLength && this.line.charAt(i + 1) != ' ') {
+                    throw new Error('Expected letter space or end of string' + i);
+                }
+                result[pos] = Tick.ofValue(ret.value);
+                pos++;
+                i++;
+            } else if (this.isNumber(ch)) {
                 let ret = this.parseNumber(i);
                 i = ret.i;
                 let from = ret.value;
@@ -72,23 +84,23 @@ export class CronParser {
         let min = 0;
         let max = 0;
         switch (pos) {
-            case 0: // minute
+            case Position.MINUTE:
                 min = 0;
                 max = 59;
                 break;
-            case 1: // hour
+            case Position.HOUR:
                 min = 0;
                 max = 23;
                 break;
-            case 2: // day of month
+            case Position.DAY_OF_MONTH:
                 min = 1;
                 max = 31;
                 break;
-            case 3: // month
+            case Position.MONTH:
                 min = 1;
                 max = 12;
                 break;
-            case 4: // day of week
+            case Position.DAY_OF_WEEK:
                 min = 0;
                 max = 7;
                 break;
@@ -103,7 +115,7 @@ export class CronParser {
         let max = this.getMinMax(this.pos).max;
 
         let ch = this.line.charAt(i);
-        if (!this.isNumeric(ch)) {
+        if (!this.isNumber(ch)) {
             throw new Error('Expected number, found [' + ch + '] at position ' + i);
         }
 
@@ -111,7 +123,7 @@ export class CronParser {
         while (this.isNextNumber(i)) {
             i++;
             ch = this.line.charAt(i)
-            if (this.isNumeric(ch)) {
+            if (this.isNumber(ch)) {
                 digits = digits.concat(ch)
             } else {
                 throw new Error('Unexpected character [' + ch + '] at position ' + i);
@@ -129,22 +141,51 @@ export class CronParser {
         return {value: num, i};
     }
 
-    private isNextNumber(i: number): boolean {
-        return i + 1 <= this.zeroLength && this.isNumeric(this.line.charAt(i + 1));
-    }
-
-    private isNextDash(i: number): boolean {
-        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == "-";
-    }
-
     private isNextSlash(i: number) {
-        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == "/";
+        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == '/';
     }
 
-    private isNumeric(str: string): boolean {
+    private isNumber(str: string): boolean {
         return str.trim() !== "" && !isNaN(Number(str));
     }
 
+    private isNextNumber(i: number): boolean {
+        return i + 1 <= this.zeroLength && this.isNumber(this.line.charAt(i + 1));
+    }
+
+    private isNextDash(i: number): boolean {
+        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == '-';
+    }
+
+
+    private isLetter(ch: string) {
+        return /^[A-Za-z]$/.test(ch);
+    }
+
+    private parseToken(i: number) {
+        let letters = this.line.charAt(i);
+        const needed = i + 2; // Len of string value allays equals 3
+        while (i + 1 <= this.zeroLength && i < needed) {
+            i++;
+            let ch = this.line.charAt(i)
+            if (!this.isLetter(ch)) {
+                throw new Error('Expected letter character, found [' + ch + '] at position ' + i);
+            }
+            letters = letters.concat(ch);
+        }
+        letters = letters.toLowerCase();
+        let value = -1;
+        if (this.pos == Position.MONTH) {
+            value = this.month.indexOf(letters)
+        }
+        if (this.pos == Position.DAY_OF_WEEK) {
+            value = this.dayOfWeek.indexOf(letters);
+        }
+        if (value == -1) {
+            throw new Error('Wrong token, found [' + letters + '] at position ' + i);
+        }
+        return {value, i};
+    }
 }
 
 enum TickType {
@@ -153,6 +194,14 @@ enum TickType {
     RANGE,
     STEP,
     STEP_RANGE,
+}
+
+enum Position {
+    MINUTE,
+    HOUR,
+    DAY_OF_MONTH,
+    MONTH,
+    DAY_OF_WEEK,
 }
 
 export class Tick {
