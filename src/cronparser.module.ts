@@ -11,7 +11,7 @@ export class CronParser {
         this.zeroLength = line.length - 1;
 
         let pos = 0;
-        let result: Array<Array<Tick>> = [[],[],[],[],[]];
+        let result: Array<Array<Tick>> = [[], [], [], [], []];
         let current = new Tick();
         for (let i = 0; i < line.length; i++) {
             let ch: string = line.charAt(i);
@@ -31,8 +31,10 @@ export class CronParser {
                 }
                 let ret = this.parseToken(i);
                 i = ret.i;
+                // Only single token allowed
+                // oct-dec|oct,11 - restricted
                 if (i != this.zeroLength && this.line.charAt(i + 1) != ' ') {
-                    throw new Error('Expected letter space or end of string' + i);
+                    throw new Error('Expected space or end of string at position' + i);
                 }
                 result[pos].push(Tick.ofValue(ret.value));
             } else if (this.isNumber(ch)) {
@@ -68,11 +70,15 @@ export class CronParser {
 
             if (!this.isNextComma(i)) {
                 pos++;
+                this.pos = pos;
+                // FIXME: Only 5 parameters allowed
             }
 
+            // Skip space or comma
             i++;
-            this.pos = pos;
         }
+
+        // FIXME: Check end of line
 
         return new CronResult(result);
     }

@@ -112,7 +112,7 @@ test('Every wednesday but by letters', () => {
     expect(cronResult.dayOfWeek[0].isEqual(expected)).toBe(true);
 });
 
-test('Every step 2 of 1-22 hour', () => {
+test('Simple list', () => {
     let cronResult = new CronParser().parse('1,3,0-59/2 * * * *');
     let expected = Tick.ofValue(1);
     expect(cronResult.minute[0].isEqual(expected)).toBe(true);
