@@ -11,7 +11,7 @@ export class CronParser {
         this.zeroLength = line.length - 1;
 
         let pos = 0;
-        let result: Array<Tick> = [];
+        let result: Array<Array<Tick>> = [[],[],[],[],[]];
         let current = new Tick();
         for (let i = 0; i < line.length; i++) {
             let ch: string = line.charAt(i);
@@ -20,13 +20,11 @@ export class CronParser {
                     i = i + 2; // Confidently move the pointer by two positions
                     let ret = this.parseNumber(i);
                     i = ret.i;
-                    result[pos] = Tick.ofStep(ret.value);
+                    result[pos].push(Tick.ofStep(ret.value));
                 } else {
                     current = new Tick();
-                    result[pos] = current;
+                    result[pos].push(current);
                 }
-                pos++;
-                i++;
             } else if (this.isLetter(ch)) {
                 if (pos != Position.MONTH && pos != Position.DAY_OF_WEEK) {
                     throw new Error('Letter character does not allow for [' + pos + '] at position ' + i);
@@ -36,9 +34,7 @@ export class CronParser {
                 if (i != this.zeroLength && this.line.charAt(i + 1) != ' ') {
                     throw new Error('Expected letter space or end of string' + i);
                 }
-                result[pos] = Tick.ofValue(ret.value);
-                pos++;
-                i++;
+                result[pos].push(Tick.ofValue(ret.value));
             } else if (this.isNumber(ch)) {
                 let ret = this.parseNumber(i);
                 i = ret.i;
@@ -62,20 +58,21 @@ export class CronParser {
                     i = i + 2; // Confidently move the pointer by two positions
                     let ret = this.parseNumber(i);
                     i = ret.i;
-                    result[pos] = Tick.ofStepRange(tick.first, tick.second, ret.value);
+                    result[pos].push(Tick.ofStepRange(tick.first, tick.second, ret.value));
                 } else {
-                    result[pos] = tick;
+                    result[pos].push(tick);
                 }
-
-                pos++;
-                i++;
             } else {
                 throw new Error('Unexpected character [' + ch + '] at position ' + i);
             }
+
+            if (!this.isNextComma(i)) {
+                pos++;
+            }
+
+            i++;
             this.pos = pos;
         }
-        // last
-        // result[pos] = current;
 
         return new CronResult(result);
     }
@@ -158,6 +155,10 @@ export class CronParser {
     }
 
 
+    private isNextComma(i: number) {
+        return i + 1 <= this.zeroLength && this.line.charAt(i + 1) == ',';
+    }
+
     private isLetter(ch: string) {
         return /^[A-Za-z]$/.test(ch);
     }
@@ -186,6 +187,7 @@ export class CronParser {
         }
         return {value, i};
     }
+
 }
 
 enum TickType {
@@ -271,21 +273,13 @@ export class Tick {
 // | hour (0–23)
 // minute (0–59)
 export class CronResult {
-    minute: Tick;
-    hour: Tick;
-    dayOfMonth: Tick;
-    month: Tick;
-    dayOfWeek: Tick;
+    minute: Array<Tick>;
+    hour: Array<Tick>;
+    dayOfMonth: Array<Tick>;
+    month: Array<Tick>;
+    dayOfWeek: Array<Tick>;
 
-    // constructor(result: any[]) {
-    //     this.minute = result[0];
-    //     this.hour = result[1];
-    //     this.dayOfMonth = result[2];
-    //     this.month = result[3];
-    //     this.dayOfWeek = result[4];
-    // }
-
-    constructor([minute, hour, dayOfMonth, month, dayOfWeek]: Tick[]) {
+    constructor([minute, hour, dayOfMonth, month, dayOfWeek]: Array<Array<Tick>>) {
         this.minute = minute;
         this.hour = hour;
         this.dayOfMonth = dayOfMonth;
